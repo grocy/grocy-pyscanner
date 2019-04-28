@@ -129,15 +129,17 @@ def upc_lookup(upc):
              r = requests.get(url=url, json=data, headers=headers)
              j = r.json()
              if r.status_code == 200:
-                print("Buycott found it so now we're going to gather some info here and then add it to the system")
-                name = j['products'][0]['product_name']
-                description = j['products'][0]['product_description']
-                #We now have what we need to add it to grocy so lets do that
-                #Sometimes buycott returns a success but it never actually does anything so lets just make sure that we have something
-                if name != '':
-                    add_to_system(upc, name, description)
+	    		print("Buycott found it so now we're going to gather some info here and then add it to the system")
+			if 'products' in j:
+			    	name = j['products'][0]['product_name']
+			    	description = j['products'][0]['product_description']
+			    	#We now have what we need to add it to grocy so lets do that
+			    	#Sometimes buycott returns a success but it never actually does anything so lets just make sure that we have something
+			        add_to_system(upc, name, description)
+			else:
+				print("We were unable to find the product so moving on")
         except requests.exceptions.Timeout:
-            print("The connection timed out")
+        	print("The connection timed out")
         except requests.exceptions.TooManyRedirects:
             print ("Too many redirects")
         except requests.exceptions.RequestException as e:
