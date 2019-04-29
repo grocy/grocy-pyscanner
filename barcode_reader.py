@@ -49,7 +49,7 @@ def increase_inventory(upc):
     if response_code != 200:
         print ("Increasing the value of %s failed") % (product_name)
     if homeassistant_token != '':
-      message_text="I increased %s by a count of %s" % (product_name, stock_amount)
+      message_text="I increased %s by a count of %s" % (product_name, purchase_amount)
       homeassistant_call(message_text)
     barcode = ''
 
@@ -238,7 +238,8 @@ def homeassistant_call(message_text):
              }
     r = requests.post(url=homeassistant_url, json=data, headers=headers)
     r.status_code
-    print (r.status_code)
+    if r.status_code != 200:
+      print("HomeAssistant call failed with a status code of %s") % (r.status_code)
 
 for event in device.read_loop():
     if event.type == ecodes.EV_KEY:
