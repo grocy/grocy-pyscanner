@@ -33,6 +33,8 @@ scancodes = {
 	10:	u'9'
 }
 NOT_RECOGNIZED_KEY = u'X'
+homeassistant_url='YOUR_HOME_ASSISTANT_URL/DOMAIN/SERVICE'
+homeassistant_api='YOUR_HOME_ASSISTANT_API'
 
 def increase_inventory(upc):
     #Need to lookup our product_id, if we don't find one we'll do a search and add it
@@ -45,7 +47,10 @@ def increase_inventory(upc):
     grocy_api_call_post(url, data)
     #As long as we get a 200 back from the app it means that everything went off without a hitch
     if response_code != 200:
-        print ("Increasing the value of %s failed") % product_name
+        print ("Increasing the value of %s failed") % (product_name)
+    if homeassistant_token != '':
+      message_text="I increased %s by a count of %s" % (product_name, stock_amount)
+      homeassistant_call(message_text)
     barcode = ''
 
 def decrease_inventory(upc):
@@ -63,8 +68,14 @@ def decrease_inventory(upc):
         grocy_api_call_post(url, data)
         if response_code == 400:
             print ("Decreasing the value of %s failed, are you sure that there was something for us to decrease?") % product_name
+            if homeassistant_token != '':
+              message_text("I failed to decrease %s, please try again") % (product_name)
+              homeassistant_call(message_text)
     else:
         print ("The current stock amount is 0 so there was nothing for us to do here")
+        if homeassistant_token != '':
+          message_text("There was nothing for me to decrease for %s so we did nothing")
+          homeassistant_call(message_text)
     barcode=''
 
 def product_id_lookup(upc):
@@ -216,22 +227,41 @@ def grocy_api_call_post(url, data):
     except requests.exceptions.RequestException as e:
         print e
 
+def homeassistant_call(message_text):
+    print("Calling homeassistant to speak some text")
+    headers = {
+		'Authorization': 'Bearer {}'.format(homeassistant_token),
+		'Content-Type': 'application/json'
+	}
+    data = { "entity_id": "YOUR_ENTITY",
+			 "message": message_text
+             }
+    r = requests.post(url=homeassistant_url, json=data, headers=headers)
+    r.status_code
+    print (r.status_code)
+
 for event in device.read_loop():
     if event.type == ecodes.EV_KEY:
         eventdata = categorize(event)
         if eventdata.keystate == 1: # Keydown
             scancode = eventdata.scancode
             if scancode == 28: # Enter
-                print barcode
+                print (barcode)
                 if barcode != '' and len(barcode) >= 7:
                     if barcode == add_id and ADD == 0:
                         ADD = 1
                         barcode=''
                         print("Entering add mode")
+                        if homeassistant_token != '':
+                            message_text="Entering add mode"
+                            homeassistant_call(message_text)
                     elif barcode == add_id and ADD == 1:
                         ADD = 0
                         barcode=''
                         print("Entering consume mode")
+                        if homeassistant_token != '':
+                            message_text="Entering consume mode"
+                            homeassistant_call(message_text)
                     elif ADD == 1:
                         upc=barcode
                         barcode=''

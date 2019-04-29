@@ -15,12 +15,17 @@ This is where you want the product to go.  I created an entry ADDED_UPDATE_LOCAT
 This could be enhanced with barcodes that represent each location you have, then have the main function do some stuff but eh not worth it for me at this time
 This can be found by clicking on the location in the app and looking at the URL of course if you're curl savvy you could always query the api directly
 location_id = LOCATION_ID
+Optional
+homeassistant_url='YOUR_HOME_ASSISTANT_URL/DOMAIN/SERVICE'
+homeassistant_api='YOUR_HOME_ASSISTANT_API'
 
 I wrote this because I knew there was no way I would be able to get the house on board with using this if they needed to run around with a computer with the scanner attached to it.
 
 So instead I plugged the dongle for my scanner into a raspberry pi that runs my sprinklers and I just run the app from there.  Right now I run it in a screen session so that I can see the output.  
 
 I'm working on coming up with some sort of a solution to let the user know if the scan worked.  Right now best idea I have come up with is to make another API call to my HomeAssistant and then have HomeAssistant do something that informs the user that it worked.
+Update:
+04/29/2019: I got the home assistant integration working.  For me I have this going to an Echo that is in my kitchen and I have it speak what mode it is in and if I added something it tells me how many it added it by.  If this is the first time addding it will say zero because the quantity hasn't been setup properly in the database yet.  Once you update the system to the correct quantity for the item then it will work just fine. 
 
 I am fully open to pull requests as I am certain there are enhancements that someone who is a little more python savvy than myself could come up with or perhaps optimize the code a little more
 
