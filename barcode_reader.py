@@ -7,15 +7,22 @@ from evdev import InputDevice, categorize, ecodes
 
 #This will allow you to work the grocy inventory with a barcode scanner
 #I found I needed to just declare some things right off the bat when the app loads such as the ADD and barcode
-UPC_DATABASE_API='API_KEY'
-buycott_token='API_KEY'
-GROCY_API='API_KEY'
+UPC_DATABASE_API=''
+#I've been waiting for my token but you can register for one at developers.walmart.com
+walmart_token=''
+#This UPC lookup doesn't require a token or anything
+walmart_search=1
+#This UPC DB also doesn't require a token but does have a limit of 100 calls per day
+upc_item_db=1
+#Your Grocy API Key
+GROCY_API=''
 #This is some arbitrary number.  We used a barcode generator and put in some random 7 digit number to use as our ADDID.  You could use a barcode off of something that you will never inventory
-add_id='ADD_ID'
+add_id='43235735'
 #This is the URL of your grocy app or IP address.
-base_url = 'BASE_URL'
+base_url = 'http://grocy.thefuzz4.net/api'
 ADD = 0
 barcode = ''
+message_text = ''
 #This is where you want the product to go.  I created an entry ADDED_UPDATE_LOCATION so that it stands out when going through the prduct list so I know it needs to be addressed.
 #This could be enhanced with barcodes that represent each location you have, then have the main function do some stuff but eh not worth it for me at this time
 location_id = 6
@@ -106,11 +113,12 @@ def product_id_lookup(upc):
         stock_amount = j['stock_amount']
 
 def upc_lookup(upc):
-    if UPC_DATABASE_API != '':
+    found_it=0
+    if UPC_DATABASE_API != '' and found_it == 0:
         print("Looking up the UPC")
         url = "https://api.upcdatabase.org/product/%s/%s" % (upc, UPC_DATABASE_API)
         headers = {
-            'cache-control': "no-cache",
+            'cache-control': 'no-cache'
         }
         try:
             r = requests.get(url, headers=headers)
@@ -121,42 +129,61 @@ def upc_lookup(upc):
                 description = j['description']
                 #We now have what we need to add it to grocy so lets do that
                 add_to_system(upc, name, description)
+                found_it=1
         except requests.exceptions.Timeout:
             print("The connection timed out")
         except requests.exceptions.TooManyRedirects:
             print ("Too many redirects")
         except requests.exceptions.RequestException as e:
-            print e
-    if buycott_token != '':
-        print("Looking up in Buycott")
-        url = "https://www.buycott.com/api/v4/products/lookup"
-        headers = {
-        'Content-Type': 'application/json'
-        }
-        data={'barcode':upc,
-              'access_token':buycott_token
-             }
+            print (e)
+    if walmart_token != '' and found_it==0:
+        print("Looking up in Wal-Mart API")
+        url = "http://api.walmartlabs.com/v1/items?apiKey=%s&upc=%s" % (walmart_token, upc)
+        headers = {'cache-control': "no-cache"}
         try:
-             r = requests.get(url=url, json=data, headers=headers)
+             r = requests.get(url=url, headers=headers)
              j = r.json()
              if r.status_code == 200:
-	    		print("Buycott found it so now we're going to gather some info here and then add it to the system")
-			if 'products' in j:
-			    	name = j['products'][0]['product_name']
-			    	description = j['products'][0]['product_description']
-			    	#We now have what we need to add it to grocy so lets do that
-			    	#Sometimes buycott returns a success but it never actually does anything so lets just make sure that we have something
-			        add_to_system(upc, name, description)
-			else:
-				print("We were unable to find the product so moving on")
+                    print("Walmart found it so now we're going to gather some info here and then add it to the system")
+                    if 'items' in j:
+                        name = j['items'][0]['name']
+                        description = j['items'][0]['longDescription']
+                        #We now have what we need to add it to grocy so lets do that
+                        #Sometimes buycott returns a success but it never actually does anything so lets just make sure that we have something
+                        add_to_system(upc, name, description)
+                        found_it=1
         except requests.exceptions.Timeout:
         	print("The connection timed out")
         except requests.exceptions.TooManyRedirects:
             print ("Too many redirects")
         except requests.exceptions.RequestException as e:
-            print e
-
-    else:
+            print (e)
+    if walmart_search == 1 and found_it==0:
+      print("Looking up in Wal-Mart Search")
+      url = "https://search.mobile.walmart.com/v1/products-by-code/UPC/%s?storeId=1" % (upc)
+      headers = {
+      'Content-Type': 'application/json',
+      'cache-control': "no-cache"
+      }
+      try:
+           r = requests.get(url=url, headers=headers)
+           j = r.json()
+           if r.status_code == 200:
+                  print("Walmart Search found it so now we're going to gather some info here and then add it to the system")
+                  if 'data' in j:
+                      name = j['data']['common']['name']
+                      description = ''
+                      #We now have what we need to add it to grocy so lets do that
+					  #Sometimes buycott returns a success but it never actually does anything so lets just make sure that we have something
+                      add_to_system(upc, name, description)
+                      found_it=1
+      except requests.exceptions.Timeout:
+          print("The connection timed out")
+      except requests.exceptions.TooManyRedirects:
+          print ("Too many redirects")
+      except requests.exceptions.RequestException as e:
+          print (e)
+    if upc_item_db == 1 and found_it==0:
         #This is a free service that limits you to 100 hits per day if we can't find it here we'll still create it in the system but it will be just a dummy entry
         print("Looking up in UPCItemDB")
         url = "https://api.upcitemdb.com/prod/trial/lookup?upc=%s" % (upc)
@@ -168,27 +195,33 @@ def upc_lookup(upc):
             r = requests.get(url=url, headers=headers)
             j = r.json()
             if r.status_code == 200:
-                print("UPCItemDB found it so now we're going to gather some info here and then add it to the system")
-                name = j['items'][0]['title']
-                description = j['items'][0]['description']
-                #We now have what we need to add it to grocy so lets do that
-                add_to_system(upc, name, description)
-            else:
-                print ("The item with %s was not found so we're adding a dummy one") % (upc)
-                name="The product was not found in the external sources you will need to fix %s" % (upc),
-                description=''
-                add_to_system(upc, name, description)
+              total = j['total']
+              if total != 0 or total != '':
+                  print("UPCItemDB found it so now we're going to gather some info here and then add it to the system")
+                  description = j['items'][0]['description']
+                  #We now have what we need to add it to grocy so lets do that
+                  add_to_system(upc, name, description)
+                  found_it=1
         except requests.exceptions.Timeout:
             print("The connection timed out")
         except requests.exceptions.TooManyRedirects:
             print ("Too many redirects")
         except requests.exceptions.RequestException as e:
-            print e
-    #By now we have our product added to the system.  We can now lookup our product_id again and then proceed with whatever it is we were doing
-    if response_code != 204:
-        #Something went wrong and the product was not added
-        print("Adding the product with %s failed not sure why but it did") % (upc)
-    product_id_lookup(upc)
+             print (e)
+    if found_it==0:
+         print ("The item with %s was not found so we're adding a dummy one") % (upc)
+         name="The product was not found in the external sources you will need to fix %s" % (upc)
+         description='dummy'
+         add_to_system(upc, name, description)
+         found_it=1
+    if found_it==1:
+       #By now we have our product added to the system.  We can now lookup our product_id again and then proceed with whatever it is we were doing
+       product_id_lookup(upc)
+    else:
+       message_text=("I was unable to find a productID for %s and it is not in the system")
+       homeassistant_call(message_text)
+       print(message_text)
+
 
 #Rather than have this in every section of the UPC lookup we just have a function that we call for building the json for the api call to actually add it to the system
 def add_to_system(upc, name, description):
