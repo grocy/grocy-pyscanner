@@ -3,20 +3,31 @@ This awesome script will allow you the user to add/remove items from the system 
 The script requires that you edit a few of the variables at the top of the description
 
 UPC_DATABASE_API='UPC_API'
+
 buycott_token='BUYCOTT_API'
+
 GROCY_API='GROCY_API'
+
 This is some arbitrary number.  We used a barcode generator and put in some random 7 digit number to use as our ADDID.  You could use a barcode off of something that you will never inventory
+
 add_id='ADDID'
+
 This is the URL of your grocy app or IP address.
+
 base_url = 'YOUR_GROCY_URL'
-ADD = 0
-barcode = ''
+
 This is where you want the product to go.  I created an entry ADDED_UPDATE_LOCATION so that it stands out when going through the prduct list so I know it needs to be addressed.
-This could be enhanced with barcodes that represent each location you have, then have the main function do some stuff but eh not worth it for me at this time
-This can be found by clicking on the location in the app and looking at the URL of course if you're curl savvy you could always query the api directly
+
+This could be enhanced with barcodes that represent each location you have, then have the main function do some stuff but eh not worth it for me at this time.
+
+This can be found by clicking on the location in the app and looking at the URL of course if you're curl savvy you could always query the api directly.
+
 location_id = LOCATION_ID
+
 Optional
+
 homeassistant_url='YOUR_HOME_ASSISTANT_URL/DOMAIN/SERVICE'
+
 homeassistant_api='YOUR_HOME_ASSISTANT_API'
 
 I wrote this because I knew there was no way I would be able to get the house on board with using this if they needed to run around with a computer with the scanner attached to it.
