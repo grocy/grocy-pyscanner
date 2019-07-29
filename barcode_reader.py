@@ -78,18 +78,19 @@ def decrease_inventory(upc):
 	        'spoiled': 'false'}
 		#We now have everything we need and we can now proceed
 		grocy_api_call_post(url, data)
-	if response_code == 400:
-		print ("Decreasing the value of %s failed, are you sure that there was something for us to decrease?") % (product_name)
-		message_text=("I failed to decrease %s, please try again") % (product_name)
-		homeassistant_call(message_text)
-	if homeassistant_token != '':
-		message_text=("Consumed %s") % (product_name)
-		homeassistant_call(message_text)
+		if response_code == 400:
+			print ("Decreasing the value of %s failed, are you sure that there was something for us to decrease?") % (product_name)
+			message_text=("I failed to decrease %s, please try again") % (product_name)
+			homeassistant_call(message_text)
 	else:
 		print ("The current stock amount for %s is 0 so there was nothing for us to do here") % (product_name)
 		if homeassistant_token != '':
 			message_text=("There was nothing for me to decrease for %s so we did nothing") % (product_name)
 			homeassistant_call(message_text)
+	if homeassistant_token != '':
+		product_id_lookup(upc)
+		message_text=("Consumed %s.  You now have %s left") % (product_name, stock_amount)
+		homeassistant_call(message_text)
 	barcode=''
 
 def product_id_lookup(upc):
