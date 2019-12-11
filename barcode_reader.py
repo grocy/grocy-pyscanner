@@ -59,7 +59,6 @@ def increase_inventory(upc):
 	    print ("Increasing the value of %s failed") % (product_name)
 	else:
 	  if homeassistant_token != '':
-	    product_id_lookup(upc)
 	    message_text="I increased %s by a count of %s to a total count of %s" % (product_name, purchase_amount, stock_amount)
 	    homeassistant_call(message_text)
 	barcode = ''
@@ -80,15 +79,14 @@ def decrease_inventory(upc):
 		grocy_api_call_post(url, data)
 		if response_code == 400:
 			print ("Decreasing the value of %s failed, are you sure that there was something for us to decrease?") % (product_name)
-			message_text=("I failed to decrease %s, please try again") % (product_name)
+			message_text=("I failed to decrease %") % (product_name)
 			homeassistant_call(message_text)
 	else:
 		print ("The current stock amount for %s is 0 so there was nothing for us to do here") % (product_name)
 		if homeassistant_token != '':
-			message_text=("There was nothing for me to decrease for %s so we did nothing") % (product_name)
+			message_text=("The stock amount for %s was zero, so there was nothing for me to decrease") % (product_name)
 			homeassistant_call(message_text)
-	if homeassistant_token != '':
-		product_id_lookup(upc)
+	if homeassistant_token != '' and response_code == 200:
 		message_text=("Consumed %s.  You now have %s left") % (product_name, stock_amount)
 		homeassistant_call(message_text)
 	barcode=''
@@ -126,28 +124,6 @@ def product_id_lookup(upc):
 
 def upc_lookup(upc):
 	found_it=0
-	if UPC_DATABASE_API != '' and found_it == 0:
-		print("Looking up the UPC")
-		url = "https://api.upcdatabase.org/product/%s/%s" % (upc, UPC_DATABASE_API)
-		headers = {
-		'cache-control': 'no-cache'
-		}
-		try:
-			r = requests.get(url, headers=headers)
-			if r.status_code==200:
-				print("UPC DB found it so now going to add it to the system")
-				j = r.json()
-				name = j['title']
-				description = j['description']
-				#We now have what we need to add it to grocy so lets do that
-				add_to_system(upc, name, description)
-				found_it=1
-		except requests.exceptions.Timeout:
-			print("The connection timed out")
-		except requests.exceptions.TooManyRedirects:
-			print ("Too many redirects")
-		except requests.exceptions.RequestException as e:
-			print (e)
 	if walmart_search == 1 and found_it==0:
 		print("Looking up in Wal-Mart Search")
 		url = "https://search.mobile.walmart.com/v1/products-by-code/UPC/%s?storeId=1" % (upc)
@@ -167,6 +143,12 @@ def upc_lookup(upc):
 					#Sometimes buycott returns a success but it never actually does anything so lets just make sure that we have something
 					add_to_system(upc, name, description)
 					found_it=1
+			if r.status_code == 400:
+				found_it=0
+		except ValueError:
+			print("We failed to decode the json for this item %s") % (upc)
+			message_text=("Walmart errored on this item.  Stupid walmart")
+			homeassistant_call(message_text)
 		except requests.exceptions.Timeout:
 			print("The connection timed out")
 		except requests.exceptions.TooManyRedirects:
@@ -285,19 +267,15 @@ def homeassistant_call(message_text):
 	'Authorization': 'Bearer {}'.format(homeassistant_token),
 	'Content-Type': 'application/json'
 	}
-	data = { "entity_id": "media_player.jason_s_2nd_echo_show_2",
-	"message": message_text
+	data = { "message":message_text,
+			"data":{"type":"tts"},
+			"target":["media_player.jason_s_2nd_echo_show_2"]
 	}
 	r = requests.post(url=homeassistant_url, json=data, headers=headers)
 	r.status_code
 	if r.status_code != 200:
 		print("HomeAssistant call failed with a status code of %s") % (r.status_code)
 
-def make_auth_token(upc_string, auth_key):
-	global signature
-	sha_hash = hmac.new(auth_key, upc_string, hashlib.sha1)
-	signature = base64.b64encode(sha_hash.digest()).decode()
-	print (signature)
 
 for event in device.read_loop():
 	if event.type == ecodes.EV_KEY:
